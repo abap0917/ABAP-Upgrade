@@ -1,0 +1,91 @@
+# 接收方使用说明 — MCP ABAP 连接初始化模板
+
+> 本文件面向**接收模板的人**。模板内含:初始化向导 `scripts\system-init.ps1`、
+> AI 指令版 `docs\SYSTEM_INIT_AGENT.md`、agent 配置模板 `mcp-pack\agent-configs`、
+> 连接配置模板 `mcp-pack\.env.example`。
+
+---
+
+## 1. 前提(先准备好,再运行向导)
+
+- **MCP 服务器**:`adt-dev`(已 `npm install` + `npm run build`,确认
+  `dist\server\launcher.js` 存在),或 npm 全局包 `mcp-abap-adt`;
+- Windows 10/11(自带 PowerShell 5.1+,脚本兼容);
+- 能访问目标 SAP 系统(S4HANA 建议 onprem;若走 OData 后端,服务端需已安装
+  `ZMCP_ADT_SRV`,见 `docs\ZMCP_ADT_SRV-安装指南.md`)。
+
+## 2. 运行初始化向导
+
+把模板解压到你的工作目录,然后:
+
+```powershell
+# 打开 PowerShell(开始菜单 → powershell),进入解压目录
+cd C:\你的路径\解压后的文件夹
+
+# 若文件来自邮件/网页下载,先解除"已阻止"(否则可能被拦截)
+Unblock-File .\scripts\system-init.ps1
+
+# 运行(带 -ExecutionPolicy Bypass 最稳,无需管理员)
+powershell -ExecutionPolicy Bypass -File .\scripts\system-init.ps1
+```
+
+> - **不要**单独把 `.ps1` 拷走运行——它靠自身位置定位项目根,必须放在解压后的
+>   `scripts\` 目录里;
+> - 直接在 PowerShell 里 `.\scripts\system-init.ps1` 也可能因默认执行策略(Restricted)
+>   被拒,报 *"在此系统上禁止运行脚本"*,此时用 `-ExecutionPolicy Bypass` 即可;
+> - 若右键"使用 PowerShell 运行"后窗口一闪而过,请改用手动窗口方式。
+
+向导会**依次询问**以下内容(均有默认值,直接回车用默认):
+
+| 阶段 | 询问/处理 |
+|---|---|
+| 步骤0 系统探测 | SAP URL / Client / 用户名 / 密码 → 自动探测 ADT 可达性与认证 |
+| 步骤1 收集配置 | 语言、系统类型、SAP_MASTER_SYSTEM、SAP_RESPONSIBLE;**RFC 后端选择(soap/odata,含前提探测)**;密码注入方式(A: `.sc4sap\sap.env` / B: agent env / C: 两者) |
+| 步骤2 确认路径 | launcher.js 路径、`.env` 路径、agent-configs 目录 |
+| 步骤3 写配置 | 自动写入 `.env` 与 `.sc4sap\sap.env` |
+| 步骤4 自动配置 | 自动更新全部 `agent-configs\*.json`(路径替换 + env 字段) |
+| 步骤5 验证 | **三选一**:① 仅启动级 ② 只读验证(推荐)③ 含读写验证 |
+
+## 3. 向导自动做的事
+
+- 探测 ADT discovery(`/sap/bc/adt/discovery`,期望 HTTP 200);
+- 按所选后端探测:soap → `/sap/bc/soap/rfc`(期望 415);odata → `$metadata`(期望 200);
+- 写入 `.env`(SAP_URL/CLIENT/账号/系统上下文)+ `.sc4sap\sap.env`(`SAP_PASSWORD`
+  全量生效——**`.env` 里的 SAP_PASSWORD 不会进 process.env,这是已知机制**);
+- 更新全部 agent 配置:launcher 路径、`--env-path`、`env` 字段
+  (`NODE_TLS_REJECT_UNAUTHORIZED=0`、按需 `SAP_RFC_BACKEND` / `SAP_PASSWORD`);
+- 启动级验证:`node <launcher> --version`(模块加载 + 后端解析)。
+
+## 4. 验证后接入 AI 客户端
+
+- 把 `mcp-pack\agent-configs\<你的客户端>.json` 里的 `mcpServers` 内容粘贴到
+  对应客户端的 MCP 服务器配置,重启客户端即可;
+- 或运行 `mcp-pack\scripts\start-http.cmd`(HTTP 模式,端口 3000)后用
+  `http://127.0.0.1:3000/mcp/stream/http` 连接。
+
+## 5. 注意事项
+
+- **敏感**:你生成的 `.env` / `.sc4sap\sap.env` 含你的密码——**勿提交 git、勿回传/外发**;
+- **启动前注入**:`SAP_RFC_BACKEND` 必须在 node 启动前设置(agent `env` 字段或启动脚本
+  `set`),写在 `.env`/`.sc4sap` 里不生效;
+- **服务器 cwd**:若用 `.sc4sap\sap.env`(方式 A),服务器进程工作目录需为 `mcp-pack`
+  (项目自带启动脚本已处理);
+- **已知限制**:Screen / GUI Status 类工具在部分系统不可用(标准 FM 环境限制),
+  TextElement 工具通常可用——测试预期请勿包含 Screen/GUI;
+- **占位符**:`agent-configs` 与 `start-*.cmd` 里的路径是占位示例,向导步骤4会自动
+  替换 `agent-configs` 的路径;`start-*.cmd` 如需使用请按本机路径修改。
+
+## 6. 排错速查
+
+| 症状 | 原因 | 处理 |
+|---|---|---|
+| *在此系统上禁止运行脚本* | 执行策略 Restricted | 用 `powershell -ExecutionPolicy Bypass -File .\scripts\system-init.ps1` |
+| *已阻止此脚本(来自 Internet)* | 下载标记(MOTW) | `Unblock-File .\scripts\system-init.ps1` |
+| `node` 不是命令 | 未装 Node.js | 安装 Node.js LTS |
+| `SAP_PASSWORD is required...` | 密码只写进 `.env` | 用方式 A(`.sc4sap\sap.env`)或 agent env |
+| `SAP_RFC_BACKEND must be...` | 非法值/写错位置 | 放启动前环境;取值 soap/native/gateway/odata |
+| ADT 401 | 凭据错 | 核对账号密码 |
+| OData `$metadata` 404/403 | 服务未注册 | 见 `docs\ZMCP_ADT_SRV-安装指南.md` |
+| 客户端连不上 3000 | 服务器没起 | 先跑 `start-http.cmd` |
+
+详细流程与排错见 `docs\SYSTEM_INIT_AGENT.md`。

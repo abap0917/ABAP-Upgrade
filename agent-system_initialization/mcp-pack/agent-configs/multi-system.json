@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "mcp-abap-dev": {
+      "command": "node",
+      "args": [
+        "C:/path/to/your/mcp-abap-adt/dist/server/launcher.js",
+        "--env-path=C:/your/project/mcp-pack/.env"
+      ],
+      "env": { "NODE_TLS_REJECT_UNAUTHORIZED": "0" },
+      "disabled": false
+    },
+    "mcp-abap-prod": {
+      "command": "node",
+      "args": [
+        "C:/path/to/your/mcp-abap-adt/dist/server/launcher.js",
+        "--env-path=C:/your/project/mcp-pack/.env"
+      ],
+      "env": { "NODE_TLS_REJECT_UNAUTHORIZED": "0" },
+      "disabled": false
+    }
+  }
+}

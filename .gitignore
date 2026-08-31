@@ -1,0 +1,17 @@
+# ── 敏感配置（含凭据，切勿提交）──
+**/.env
+**/.env.bak-*
+**/.sc4sap/
+*.key
+*credential*
+
+# ── Node / 构建产物 ──
+node_modules/
+dist/
+*.tgz
+*.tsbuildinfo
+
+# ── 日志 / 临时文件 ──
+*.log
+.DS_Store
+Thumbs.db

@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "agents": {
+    "agent-system_initialization": {
+      "description": "系统初始化：安装/验证 ZMCP_ADT 桥接、配置连接、拉取 ATC 基线",
+      "directory": "../agent-system_initialization",
+      "entry": "docs/SYSTEM_INIT_AGENT.md"
+    },
+    "agent-ATC_check": {
+      "description": "ATC 检查与整改：拉取结果、建对象文件夹、人工确认勾选、修改部署激活、重跑复查、出报告",
+      "directory": "../agent-ATC_check",
+      "entry": "AGENT.md"
+    }
+  }
+}
