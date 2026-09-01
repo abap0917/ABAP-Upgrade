@@ -1,0 +1,7 @@
+node_modules/**
+.vscode-test/**
+.git/**
+.gitignore
+**/*.tmp
+**/.DS_Store
+**/Thumbs.db

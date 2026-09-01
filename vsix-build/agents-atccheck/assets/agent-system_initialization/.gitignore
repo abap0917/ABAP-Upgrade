@@ -1,0 +1,14 @@
+# ---- 敏感配置(勿提交) ----
+.env
+.sc4sap/
+
+# ---- Node ----
+node_modules/
+dist/
+*.tgz
+*.tsbuildinfo
+
+# ---- 日志/临时 ----
+*.log
+.DS_Store
+Thumbs.db

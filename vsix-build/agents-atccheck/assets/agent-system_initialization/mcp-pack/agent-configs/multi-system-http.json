@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "mcp-abap-dev": {
+      "type": "streamableHttp",
+      "url": "http://127.0.0.1:3000/mcp/stream/http",
+      "headers": {
+        "x-mcp-destination": "DEV"
+      },
+      "timeout": 60,
+      "disabled": false
+    },
+    "mcp-abap-prod": {
+      "type": "streamableHttp",
+      "url": "http://127.0.0.1:3000/mcp/stream/http",
+      "headers": {
+        "x-mcp-destination": "PROD"
+      },
+      "timeout": 60,
+      "disabled": false
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "name": "agents-atccheck",
+  "displayName": "Agents-ATCcheck",
+  "description": "三 Agent 用户级模板 + 用户级 Copilot 自定义 Agent（~/.copilot/agents）；MCP 配置与 .env 为项目级，命令为当前项目生成 .vscode\\mcp.json 与 .env。",
+  "version": "1.6.3",
+  "publisher": "team2-team3",
+  "engines": { "vscode": "^1.98.0" },
+  "categories": ["Other", "Snippets"],
+  "keywords": ["ABAP", "ATC", "MCP", "SAP", "agent"],
+  "activationEvents": ["onStartupFinished", "onCommand:agentsAtcCheck.getLastObjectUrl"],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "agentsAtcCheck.initProject", "title": "Agents-ATCcheck: 初始化本项目 MCP 配置(.env + mcp.json)" },
+      { "command": "agentsAtcCheck.refreshUser", "title": "Agents-ATCcheck: 刷新用户目录 agents 模板" },
+      { "command": "agentsAtcCheck.openUserDir", "title": "Agents-ATCcheck: 打开用户目录 agents 模板" }
+    ]
+  },
+  "scripts": { "vscode:prepublish": "node -e \"console.log('no build needed')\"" },
+  "license": "SEE LICENSE IN LICENSE",
+  "repository": { "type": "git", "url": "https://example.invalid/agents-atccheck" }
+}
