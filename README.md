@@ -2,6 +2,10 @@
 
 本目录汇聚 XXX 升级项目使用的子 agent，均为自包含目录（指令 + 技能 + 脚本 + 资产），并由**调度 Agent** 统一编排。
 
+## 📄 部署文档（给其他人）
+
+全新环境部署本套 agent（Node.js、MCP 服务器、.env、SAP 侧桥接、验证与排错）：[`docs\部署文档.md`](./docs/部署文档.md)
+
 ## 调度 Agent
 
 | 调度 Agent | 目录 | 职责 | 入口 |
@@ -9,8 +13,10 @@
 | **agent-scheduler** | `agent-scheduler\` | 先调用 `agent-system_initialization` 初始化项目（**每个项目只执行一次**，由 `projects-registry.json` 保证），再调用 `agent-ATC_check` 处理 ATC 执行后的结果 | [`agent-scheduler\AGENT.md`](./agent-scheduler/AGENT.md) |
 
 - 子 agent 索引：`agent-scheduler\agents-index.json`
-- 项目注册表：`agent-scheduler\projects-registry.json`（初始化状态 + ATC 执行历史）
-- 注册表工具：`node agent-scheduler\scripts\registry.js <list|status|init|add-run|clear> ...`
+- 项目注册表：`agent-scheduler\projects-registry.json`（执行计划 + 步骤状态机 + 初始化状态 + ATC 历史 + 日志）
+- 注册表工具：`node agent-scheduler\scripts\registry.js <list|status|plan|step|log|init|add-run|verify-index|summary|clear> ...`
+- 前置自检：`node agent-scheduler\scripts\scheduler-check.js [--projectDir=<path>]`（Node 版本/注册表/索引路径/可写性）
+- **断点续跑**：步骤状态机 `init/atc/complete` 记录进度，中断后 `status` 显示阶段，从对应步骤继续
 
 ## 子 Agent 清单
 

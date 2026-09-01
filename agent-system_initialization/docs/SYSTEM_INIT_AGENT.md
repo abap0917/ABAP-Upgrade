@@ -1,8 +1,10 @@
 # 系统初始化 Agent — SAP MCP 连接初始化指令
 
 > 用途:引导 AI 客户端(或人工)完成 SAP MCP 连接从零初始化:确认配置 → 写 `.env` → 自动配置 agent → 测试。
-> 对应项目:`XXX升级项目`;服务器:`ABAP-MCP2\adt-dev`。
+> 对应项目:`XXX升级项目`（本目录 = `agent-system_initialization` 子 agent）;服务器:`your-abap-mcp\adt-dev`（示例路径）。
 > 可并行参考:PowerShell 自动化版 `scripts\system-init.ps1`(步骤一致)。
+> ⚠ **跨平台说明**:自动化脚本（`system-init.ps1` / `mcp-pack\scripts\*.cmd`）为 **Windows 专用**；
+> Linux/macOS 请按本文档步骤手动执行（curl 命令跨平台可用）。
 
 ---
 
@@ -69,9 +71,9 @@ curl -sk -o /dev/null -w "%{http_code}" -u "用户:密码" \
 ## 步骤 2:确认 MCP 读取路径
 
 向用户确认三个路径:
-1. **launcher.js 路径**(服务器):默认 `C:\path\to\your\ABAP-MCP2\adt-dev\dist\server\launcher.js`(需存在);
-2. **`.env` 路径**:默认 `XXX升级项目\mcp-pack\.env`(agent 配置的 `--env-path` 指向它);
-3. **agent-configs 目录**:默认 `XXX升级项目\mcp-pack\agent-configs`(要生成/更新的全部 json 所在处)。
+1. **launcher.js 路径**(服务器):默认 `C:\path\to\your\your-abap-mcp\adt-dev\dist\server\launcher.js`(需存在);
+2. **`.env` 路径**:默认 `XXX升级项目\agent-system_initialization\mcp-pack\.env`(agent 配置的 `--env-path` 指向它);
+3. **agent-configs 目录**:默认 `XXX升级项目\agent-system_initialization\mcp-pack\agent-configs`(要生成/更新的全部 json 所在处)。
 
 说明 `.sc4sap` 依赖服务器 cwd;若用 agent 直启且 cwd 不可控,建议用方式 B(env 字段)。
 

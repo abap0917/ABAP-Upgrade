@@ -12,22 +12,22 @@
  */
 const fs = require('node:fs');
 const path = require('node:path');
-const { spawnSync } = require('node:child_process');
+const { resolveEnvPath, resolveFlag, mcpCall } = require('./shared/mcp');
 
+// 统一 CLI 约定: --env=<path> / --launcher=<path> 优先, 兼容旧位置参数
+// 旧: node fetch-object-sources.js <worklistXml> <outDir> <envPath> [launcherPath]
 const worklistXml = path.resolve(process.argv[2] || '');
 const outDir = path.resolve(process.argv[3] || '.');
-const envPath = path.resolve(process.argv[4] || '.env');
-// launcher: 显式参数 > envPath 同级推断 (…\<parent>\adt-dev\dist\server\launcher.js) > 报错
-let launcher = process.argv[5]
-  ? path.resolve(process.argv[5])
-  : path.resolve(path.dirname(envPath), '..', 'adt-dev', 'dist', 'server', 'launcher.js');
+const envPath = resolveEnvPath(process.argv, process.argv[4] || '.env');
+// launcher: --launcher= > 旧位置参数 > envPath 同级推断 (…\<parent>\adt-dev\dist\server\launcher.js)
+let launcher = resolveFlag(process.argv, '--launcher=') || (process.argv[5] ? process.argv[5] : path.resolve(path.dirname(envPath), '..', 'adt-dev', 'dist', 'server', 'launcher.js'));
 if (!fs.existsSync(launcher)) {
-  console.error(`launcher 不存在: ${launcher}\n用法: node fetch-object-sources.js <worklistXml> <outDir> <envPath> [launcherPath]`);
+  console.error(`launcher 不存在: ${launcher}\n用法: node fetch-object-sources.js <worklistXml> <outDir> <envPath> [launcherPath]  或 --env= --launcher=`);
   process.exit(2);
 }
 launcher = path.resolve(launcher);
 
-if (!worklistXml) { console.error('用法: node fetch-object-sources.js <worklistXml> <outDir> <envPath> [launcherPath]'); process.exit(2); }
+if (!worklistXml) { console.error('用法: node fetch-object-sources.js <worklistXml> <outDir> <envPath> [launcherPath]  或 --env= --launcher='); process.exit(2); }
 
 const TOOL_BY_TYPE = {
   'PROG': { tool: 'ReadProgram', ext: 'abap' },
@@ -44,30 +44,13 @@ const TOOL_BY_TYPE = {
   'DTEL': { tool: 'ReadDataElement', ext: 'dtel' },
 };
 
-function mcpCall(tool, args) {
-  const argFile = path.join(outDir, `.tmp-${tool}-${Date.now()}.json`);
-  fs.writeFileSync(argFile, JSON.stringify(args), 'utf8');
-  const res = spawnSync(process.execPath, [path.resolve(__dirname, 'mcp-invoke.js'), launcher, envPath, tool, `@${argFile}`, '--out=' + argFile + '.out'], {
-    encoding: 'utf8', timeout: 180000, env: { ...process.env, NODE_TLS_REJECT_UNAUTHORIZED: '0' },
-  });
-  fs.rmSync(argFile, { force: true });
-  const out = argFile + '.out';
-  if (!fs.existsSync(out)) {
-    fs.rmSync(out, { force: true });
-    return { error: (res.stderr || 'no output').slice(0, 500) };
-  }
-  let parsed = null;
-  try { parsed = JSON.parse(fs.readFileSync(out, 'utf8')); } catch { }
-  fs.rmSync(out, { force: true });
-  if (!parsed || parsed.isError) return { error: (parsed?.content?.[0]?.text || 'call failed').slice(0, 500) };
-  const text = parsed.content?.[0]?.text || '';
-  try {
-    const inner = JSON.parse(text);
-    if (inner && inner.success === false) return { error: (inner.message || '').slice(0, 500) };
-    return { source: inner.source_code ?? inner.text ?? text };
-  } catch {
-    return { source: text }; // 非 JSON 时按原文
-  }
+// 薄封装: 用公共 mcpCall (shared/mcp.js), 统一错误处理与嵌套 JSON 解包
+async function mcpCallTool(tool, args) {
+  const { data, error } = await mcpCall({ launcher, envPath, tool, args });
+  if (error) return { error };
+  if (data && typeof data === 'object' && data.source_code != null) return { source: data.source_code };
+  if (typeof data === 'string') return { source: data };
+  return { source: data == null ? '' : JSON.stringify(data) };
 }
 
 (async () => {
@@ -87,15 +70,14 @@ function mcpCall(tool, args) {
   if (!objects.length) { console.error('worklist 中没有解析到对象'); process.exit(1); }
   console.log(`解析到 ${objects.length} 个对象: ${objects.map(o => `${o.name}(${o.type})`).join(', ')}`);
 
-  const summary = [];
-  for (const obj of objects) {
+  // 并行拉取各对象源码（每对象独立 MCP 调用）
+  const summary = await Promise.all(objects.map(async (obj) => {
     const folder = path.join(outDir, obj.name);
     fs.mkdirSync(folder, { recursive: true });
     const mapping = TOOL_BY_TYPE[obj.type] || TOOL_BY_TYPE[obj.type.split('/')[0]];
     if (!mapping) {
       console.warn(`!! ${obj.name}: 类型 ${obj.type} 无对应拉取工具，跳过源码`);
-      summary.push({ ...obj, sourceFile: null, error: `unsupported type ${obj.type}` });
-      continue;
+      return { ...obj, sourceFile: null, error: `unsupported type ${obj.type}` };
     }
     const argName = mapping.tool === 'ReadProgram' ? 'program_name'
       : mapping.tool === 'ReadClass' ? 'class_name'
@@ -107,18 +89,17 @@ function mcpCall(tool, args) {
       : mapping.tool === 'ReadDataElement' ? 'data_element_name'
       : 'name';
     const callArgs = { [argName]: obj.name };
-    const r = mcpCall(mapping.tool, callArgs);
+    const r = await mcpCallTool(mapping.tool, callArgs);
     if (r.error) {
       console.warn(`!! ${obj.name}: 拉取失败 ${r.error}`);
-      summary.push({ ...obj, sourceFile: null, error: r.error });
-      continue;
+      return { ...obj, sourceFile: null, error: r.error };
     }
     const src = r.source;
     const srcFile = path.join(folder, `${obj.name}.${mapping.ext}`);
     fs.writeFileSync(srcFile, src, 'utf8');
     console.log(`✓ ${obj.name}: ${srcFile} (${src.split('\n').length} 行)`);
-    summary.push({ ...obj, sourceFile: srcFile, lines: src.split('\n').length });
-  }
+    return { ...obj, sourceFile: srcFile, lines: src.split('\n').length };
+  }));
   fs.writeFileSync(path.join(outDir, 'objects-summary.json'), JSON.stringify(summary, null, 2), 'utf8');
   console.log(`\n对象清单: ${path.join(outDir, 'objects-summary.json')}`);
   const failed = summary.filter(s => s.error);

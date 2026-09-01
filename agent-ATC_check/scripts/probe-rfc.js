@@ -5,16 +5,8 @@
  */
 const https = require('node:https');
 const fs = require('node:fs');
-
-function loadEnv(file) {
-  const env = {};
-  for (const line of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
-    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
-    if (m) env[m[1]] = m[2].replace(/^["']|["']$/g, '');
-  }
-  return env;
-}
-const env = loadEnv('.env');
+const { loadEnv, resolveEnvPath } = require('./shared/mcp');
+const env = loadEnv(resolveEnvPath(process.argv, '.env'));
 const base = env.SAP_URL.replace(/\/+$/, '');
 const auth = 'Basic ' + Buffer.from(`${env.SAP_USERNAME}:${env.SAP_PASSWORD}`).toString('base64');
 

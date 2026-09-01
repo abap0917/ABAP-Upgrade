@@ -2,12 +2,10 @@
 /* probe-atc-results2.js — 带 createdBy 探测 /atc/results 列表 */
 const https = require('node:https');
 const fs = require('node:fs');
+const { loadEnv, resolveEnvPath } = require('./shared/mcp');
 const env = {};
-const envPath = process.argv[2] || '.env';
-for (const line of fs.readFileSync(envPath, 'utf8').split(/\r?\n/)) {
-  const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/);
-  if (m && !line.trim().startsWith('#')) env[m[1]] = m[2];
-}
+const envPath = resolveEnvPath(process.argv, '.env');
+Object.assign(env, loadEnv(envPath));
 const base = (env.SAP_URL || '').replace(/\/+$/, '');
 const AUTH = 'Basic ' + Buffer.from(`${env.SAP_USERNAME}:${env.SAP_PASSWORD}`).toString('base64');
 const agent = new https.Agent({ keepAlive: true, rejectUnauthorized: false });

@@ -11,4 +11,4 @@ REM SAP_RFC_ODATA_SERVICE_URL can stay in .env (read per-request).
 set NODE_TLS_REJECT_UNAUTHORIZED=0
 set SAP_RFC_BACKEND=odata
 cd /d "%~dp0.."
-node "C:\path\to\your\ABAP-MCP2\adt-dev\dist\server\launcher.js" --transport=http --port 3000 --host 127.0.0.1 --env-path="%~dp0..\.env"
+node "C:\path\to\your\your-abap-mcp\adt-dev\dist\server\launcher.js" --transport=http --port 3000 --host 127.0.0.1 --env-path="%~dp0..\.env"

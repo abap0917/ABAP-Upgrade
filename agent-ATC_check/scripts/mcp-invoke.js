@@ -34,9 +34,18 @@ try {
   process.exit(2);
 }
 
+// RFC 桥接后端默认注入：SAP_RFC_BACKEND 在模块加载时读取，.env 注入太晚。
+// 未显式设置时默认 soap（走 /sap/bc/soap/rfc；odata 需 ZMCP_ADT_SRV 且无 URL 不可用）。
+// 仅影响 Screen/GUI/TextElement 等 RFC 桥接工具，ADT 工具不受影响。
+const childEnv = { ...process.env, NODE_TLS_REJECT_UNAUTHORIZED: '0' };
+if (!childEnv.SAP_RFC_BACKEND) {
+  childEnv.SAP_RFC_BACKEND = 'soap';
+  process.stderr.write('[mcp-invoke] auto SAP_RFC_BACKEND=soap (未显式设置)\n');
+}
+
 const child = spawn(process.execPath, [launcher, `--env-path=${envPath}`, `--exposition=${exposition}`], {
   stdio: ['pipe', 'pipe', 'inherit'],
-  env: { ...process.env, NODE_TLS_REJECT_UNAUTHORIZED: '0' },
+  env: childEnv,
 });
 
 let buffer = '';

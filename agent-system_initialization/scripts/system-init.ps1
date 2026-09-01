@@ -41,7 +41,7 @@ function Get-Defaults {
     AgentDir     = (Join-Path $ProjectRoot 'mcp-pack\agent-configs')
   }
   # 尝试自动定位常见服务器路径(仅本机)
-  $auto = Join-Path $env:USERPROFILE 'Desktop\ABAP-MCP2\adt-dev\dist\server\launcher.js'
+  $auto = Join-Path $env:USERPROFILE 'Desktop\your-abap-mcp\adt-dev\dist\server\launcher.js'
   if (Test-Path $auto) { $d.Launcher = $auto }
 
   # 若本机已有 .env,自动读取默认值

@@ -1,25 +1,34 @@
-# XXX 升级项目
+# 系统初始化 Agent（agent-system_initialization）
 
-基于 **MCP ABAP ADT Server** 的 SAP 开发 / 升级工作区。
+基于 **MCP ABAP ADT Server** 的 SAP MCP 连接**初始化模板**：探测系统、生成 `.env`、
+配置各 AI 客户端的 MCP 注册、安装/验证 ZMCP_ADT 桥接。是 `XXX升级项目` 的子 agent 之一
+（调度见 `..\agent-scheduler\AGENT.md`）。
 
 ## 目录结构
 
 ```
-XXX升级项目\
+agent-system_initialization\
 ├── README.md                  # 本文件
-├── .gitignore
-├── mcp-pack\                  # MCP 配置中心
-│   ├── .env                   # SAP 连接配置(真实值,勿提交 git)
-│   ├── .env.example           # 配置模板
-│   ├── .sc4sap\sap.env.example  # (可选)切换 OData RFC 后端的模板
-│   ├── agent-configs\         # 各 AI 客户端的 MCP 注册配置
-│   └── scripts\               # 启动脚本(HTTP 3000 / SSE 3001)
-└── ATC报告\ZZZPROG001\            # ATC 检查报告与修复记录
+├── .gitignore                 # 排除 .env / .sc4sap
+├── abap\                      # ZMCP_ADT 桥接源码（需部署到 SAP）
+│   ├── zcl_zmcp_adt_dpc_ext.abap
+│   ├── zcl_zmcp_adt_mpc_ext.abap
+│   └── zmcp_adt_flush_cache.abap
+├── docs\
+│   ├── SYSTEM_INIT_AGENT.md   # AI 指令版初始化流程
+│   ├── ZMCP_ADT_SRV-安装指南.md
+│   └── 接收方使用说明.md
+├── scripts\
+│   └── system-init.ps1        # 自动化向导（Windows PowerShell）
+└── mcp-pack\
+    ├── .env.example           # 连接配置模板（无真实密码）
+    ├── agent-configs\         # 各 AI 客户端的 MCP 注册配置（11 份）
+    └── scripts\               # 启动脚本（HTTP 3000 / SSE 3001，已注入 SAP_RFC_BACKEND）
 ```
 
 ## 服务器位置
 
-MCP 服务器源码位于 `C:\path\to\your\ABAP-MCP2\adt-dev`(已构建)。
+MCP 服务器源码位于 `C:\path\to\your\your-abap-mcp\adt-dev`(已构建)。
 本目录下所有 agent 配置与启动脚本均指向其 `dist\server\launcher.js`。
 
 ## 快速开始
@@ -43,17 +52,17 @@ MCP 服务器源码位于 `C:\path\to\your\ABAP-MCP2\adt-dev`(已构建)。
 
 ## 分享给其他人使用
 
-运行 `scripts\pack-for-share.ps1` 生成 **`XXX升级项目-初始化模板.zip`**:
-- **自动排除**敏感与本机内容:`.env`、`.sc4sap`、`ATC报告`(真实密码/账号不外泄);
-- **自动中立化** `agent-configs` 里的本机 launcher / `.env` 路径为占位符;
+模板打包为 `XXX升级项目-初始化模板.zip`（位于 `..\` 项目根）：
+- **自动排除**敏感与本机内容：`.env`、`.sc4sap`（真实密码/账号不外泄）；
+- **自动中立化** `agent-configs` 里的本机 launcher / `.env` 路径为占位符；
 - zip 内含 `使用说明-接收方.txt`。
 
-**接收方步骤**:解压 → 准备好 MCP 服务器(adt-dev 或 npm 包)→ 运行
-`scripts\system-init.ps1`(交互式填写自己的 SAP 连接、RFC 后端、launcher 路径)→
+**接收方步骤**：解压 → 准备好 MCP 服务器（adt-dev 或 npm 包）→ 运行
+`scripts\system-init.ps1`（交互式填写自己的 SAP 连接、RFC 后端、launcher 路径）→
 向导自动写 `.env` / `.sc4sap` 并更新 agent-configs → 按选择验证。
 
 > 也可只分享单份 `docs\SYSTEM_INIT_AGENT.md` 给 AI 客户端作为指令执行。
-> ⚠️ 分发前请先打开 zip 自查一遍;接收方填写的 `.env` 含其密码,勿回传。
+> ⚠️ 分发前请先打开 zip 自查一遍；接收方填写的 `.env` 含其密码，勿回传。
 
 ## 连接与认证(当前)
 

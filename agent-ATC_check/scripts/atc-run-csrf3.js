@@ -21,8 +21,9 @@ function loadEnv(file) {
   } catch {}
   return out;
 }
-// 环境路径: 可选第 5 个位置参数 (url, variant, [maxVerdicts], envPath; 默认脚本同目录 .env)
-const envPathArg = process.argv[5] || path.join(__dirname, '.env');
+// 环境路径: --env=<path> 优先; 兼容旧位置参数 (url, variant, [maxVerdicts], envPath)
+const { resolveEnvPath } = require('./shared/mcp');
+const envPathArg = resolveEnvPath(process.argv, process.argv[5] || path.join(__dirname, '.env'));
 const env = loadEnv(envPathArg);
 const base = new URL(env.SAP_URL || 'https://180.167.68.213:44304');
 const HOST = base.hostname;

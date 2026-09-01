@@ -2,12 +2,9 @@
 /* test-soap.js — 实测 /sap/bc/soap/rfc 调用 ZMCP_ADT_TEXTPOOL (READ) */
 const https = require('node:https');
 const fs = require('node:fs');
+const { loadEnv, resolveEnvPath } = require('./shared/mcp');
 
-const env = {};
-for (const line of fs.readFileSync('.env', 'utf8').split(/\r?\n/)) {
-  const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
-  if (m) env[m[1]] = m[2].replace(/^["']|["']$/g, '');
-}
+const env = loadEnv(resolveEnvPath(process.argv, '.env'));
 const base = env.SAP_URL.replace(/\/+$/, '');
 const auth = 'Basic ' + Buffer.from(`${env.SAP_USERNAME}:${env.SAP_PASSWORD}`).toString('base64');
 

@@ -41,18 +41,18 @@ SEGW 无法通过 ADT/MCP 创建,必须在 SAPGUI 操作:
 **已加 `set_return_multiplicity( '1' )`**,不要用上游原版!
 
 操作:SE24 → 打开 `ZCL_ZMCP_ADT_MPC_EXT` → 把
-`XXX升级项目\abap\zcl_zmcp_adt_mpc_ext.abap` 全文粘贴 → 激活。
+`agent-system_initialization\abap\zcl_zmcp_adt_mpc_ext.abap` 全文粘贴 → 激活。
 
 ## 第 3 步:注入 DPC_EXT 源码
 
 SE24 → 打开 `ZCL_ZMCP_ADT_DPC_EXT` → 把
-`XXX升级项目\abap\zcl_zmcp_adt_dpc_ext.abap` 全文粘贴 → 激活。
+`agent-system_initialization\abap\zcl_zmcp_adt_dpc_ext.abap` 全文粘贴 → 激活。
 (把 FunctionImport `Dispatch`/`Textpool` 路由到 `ZMCP_ADT_DISPATCH`/`ZMCP_ADT_TEXTPOOL`)
 
 ## 第 4 步:创建诊断/注册程序(可选但推荐)
 
 SE38 → 创建程序 `ZMCP_ADT_FLUSH_CACHE`(可执行程序)→ 粘贴
-`XXX升级项目\abap\zmcp_adt_flush_cache.abap` → 激活。
+`agent-system_initialization\abap\zmcp_adt_flush_cache.abap` → 激活。
 三个勾选项:
 - `P_FLUSH` — 清 OData 模型/别名缓存(默认勾)
 - `P_DIAG` — 直接实例化 DPC_EXT 调 execute_action(默认勾,绕开 Gateway 验证 ABAP 逻辑)

@@ -14,19 +14,17 @@
 const https = require('node:https');
 const fs = require('node:fs');
 const path = require('node:path');
+const { loadEnv, resolveEnvPath } = require('./shared/mcp');
 
-const envPath = path.resolve(process.argv[2] || '.env');
+// 统一 CLI 约定: --env=<path> 优先, 兼容旧位置参数 <envPath> <createdBy> [variant] [outDir]
+const envPath = resolveEnvPath(process.argv, process.argv[2] || '.env');
 const createdBy = (process.argv[3] || '').toUpperCase();
 const variant = process.argv[4] || 'ZABAP_CLOUD_DEV_CHECK';
 const outDir = path.resolve(process.argv[5] || '.');
 
-if (!createdBy) { console.error('用法: node fetch-atc-latest.js <envPath> <createdBy> [variant] [outDir]'); process.exit(2); }
+if (!createdBy) { console.error('用法: node fetch-atc-latest.js <envPath> <createdBy> [variant] [outDir]  或 --env=<path> <createdBy> [variant] [outDir]'); process.exit(2); }
 
-const env = {};
-for (const line of fs.readFileSync(envPath, 'utf8').split(/\r?\n/)) {
-  const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/);
-  if (m && !line.trim().startsWith('#')) env[m[1]] = m[2];
-}
+const env = loadEnv(envPath);
 const base = (env.SAP_URL || '').replace(/\/+$/, '');
 const AUTH = 'Basic ' + Buffer.from(`${env.SAP_USERNAME}:${env.SAP_PASSWORD}`).toString('base64');
 const agent = new https.Agent({ keepAlive: true, rejectUnauthorized: false });

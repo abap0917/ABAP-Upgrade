@@ -7,7 +7,7 @@
         "--env-path=C:/your/project/mcp-pack/.env",
         "--exposition=readonly,high,customizing,debug"
       ],
-      "env": { "NODE_TLS_REJECT_UNAUTHORIZED": "0" },
+      "env": { "NODE_TLS_REJECT_UNAUTHORIZED": "0", "SAP_RFC_BACKEND": "soap" },
       "disabled": false
     }
   }

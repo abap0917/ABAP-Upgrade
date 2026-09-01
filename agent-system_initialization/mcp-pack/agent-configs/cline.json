@@ -6,7 +6,7 @@
         "C:/path/to/your/mcp-abap-adt/dist/server/launcher.js",
         "--env-path=C:/your/project/mcp-pack/.env"
       ],
-      "env": { "NODE_TLS_REJECT_UNAUTHORIZED": "0" },
+      "env": { "NODE_TLS_REJECT_UNAUTHORIZED": "0", "SAP_RFC_BACKEND": "soap" },
       "disabled": false
     }
   }
