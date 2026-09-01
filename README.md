@@ -2,6 +2,18 @@
 
 本目录汇聚 XXX 升级项目使用的子 agent，均为自包含目录（指令 + 技能 + 脚本 + 资产），并由**调度 Agent** 统一编排。
 
+## 🚀 VSCode 直接使用
+
+- 用 VSCode 打开 **`XXX升级项目.code-workspace`** 即进入工作区：
+  - **MCP 连 SAP**：`.vscode\mcp.json` 已注册 `mcp-abap-adt`（路径为本机默认，换环境改此文件）
+  - **常用操作**：Terminal → Run Task（重跑 ATC / 拉历史 / HTML / 部署校验 / 回归断言 / 候选补丁 / 调度自检）
+  - **AI 助手指令**：`AGENTS.md` 指明三个 agent 的入口与使用流程
+- 首次打开时 VSCode 会提示是否允许 `.vscode\mcp.json` 中的 MCP 服务器，选择允许。
+
+## 📖 多工具操作手册
+
+各类 AI 工具（VS Code/Cursor/Windsurf/Claude/Cline/通用 MCP/HTTP 远程）下如何使用三个 agent：[docs\多工具操作手册.md](./docs/多工具操作手册.md)
+
 ## 📄 部署文档（给其他人）
 
 全新环境部署本套 agent（Node.js、MCP 服务器、.env、SAP 侧桥接、验证与排错）：[`docs\部署文档.md`](./docs/部署文档.md)

@@ -36,6 +36,31 @@ function save(r) {
   fs.writeFileSync(tmp, JSON.stringify(r, null, 2) + '\n', 'utf8');
   fs.renameSync(tmp, REGISTRY);
 }
+
+// 并发写锁：所有读-改-写操作经 update() 串行化，避免多实例同时写丢更新
+const LOCK = REGISTRY + '.lock';
+function withLock(fn) {
+  for (let i = 0; i < 50; i++) {
+    try {
+      const fd = fs.openSync(LOCK, 'wx'); // 排他创建，已存在则抛 EEXIST
+      fs.closeSync(fd);
+      try { return fn(); } finally { try { fs.rmSync(LOCK, { force: true }); } catch { /* 忽略 */ } }
+    } catch (e) {
+      if (e.code !== 'EEXIST') throw e;
+      const end = Date.now() + 100; // 锁被占用，短暂等待后重试
+      while (Date.now() < end) { /* busy-wait */ }
+    }
+  }
+  throw new Error('registry 锁超时（另一实例正在写 projects-registry.json）');
+}
+function update(fn) {
+  return withLock(() => {
+    const r = load();
+    const result = fn(r);
+    save(r);
+    return result;
+  });
+}
 function getFlag(args, name) {
   const a = args.find((x) => x.startsWith(name + '='));
   return a ? a.slice(name.length + 1) : null;
@@ -103,11 +128,11 @@ switch (cmd) {
     const transport = getFlag(args, '--transport') || '';
     const projectDir = getFlag(args, '--projectDir') || '';
     if (!k) { console.error('用法: registry.js plan <projectKey> --name= --path= --variant= --creator= --transport= [--projectDir=]'); process.exit(2); }
-    const r = load();
-    const p = getProject(r, k);
-    p.name = name; p.path = pth;
-    p.plan = { variant, creator, transport, projectDir, createdAt: p.plan?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() };
-    save(r);
+    update((r) => {
+      const p = getProject(r, k);
+      p.name = name; p.path = pth;
+      p.plan = { variant, creator, transport, projectDir, createdAt: p.plan?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() };
+    });
     console.log(`执行计划已保存: ${k} (变体=${variant} 创建人=${creator} 传输=${transport})`);
     break;
   }
@@ -118,11 +143,12 @@ switch (cmd) {
       console.error(`用法: registry.js step <projectKey> <${STEPS.join('|')}> <done|fail> [note]`);
       process.exit(2);
     }
-    const r = load();
-    const p = getProject(r, k);
-    p.steps[stepName] = state;
-    if (note) p.log.push({ at: new Date().toISOString(), msg: `step ${stepName}=${state}: ${note}` });
-    save(r);
+    const p = update((r) => {
+      const p2 = getProject(r, k);
+      p2.steps[stepName] = state;
+      if (note) p2.log.push({ at: new Date().toISOString(), msg: `step ${stepName}=${state}: ${note}` });
+      return p2;
+    });
     console.log(`步骤已更新: ${k} / ${stepName}=${state}  当前阶段: ${currentPhase(p)}`);
     break;
   }
@@ -131,10 +157,10 @@ switch (cmd) {
     const [k, ...msgParts] = args;
     const msg = msgParts.join(' ');
     if (!k || !msg) { console.error('用法: registry.js log <projectKey> <message>'); process.exit(2); }
-    const r = load();
-    const p = getProject(r, k);
-    p.log.push({ at: new Date().toISOString(), msg });
-    save(r);
+    update((r) => {
+      const p = getProject(r, k);
+      p.log.push({ at: new Date().toISOString(), msg });
+    });
     console.log(`日志已追加: ${k} @ ${new Date().toISOString()}`);
     break;
   }
@@ -142,15 +168,19 @@ switch (cmd) {
   case 'init': {
     const [k, name, pth, summary] = args;
     if (!k || !name || !pth) { console.error('用法: registry.js init <projectKey> <name> <path> [summary]'); process.exit(2); }
-    const r = load();
-    const p = getProject(r, k);
-    if (p.initialized) { console.log(`已初始化，跳过（${k} 于 ${p.initAt}）`); process.exit(0); }
-    p.name = name; p.path = pth;
-    p.initialized = true;
-    p.initAt = new Date().toISOString();
-    if (summary) p.initSummary = summary;
-    p.steps.init = 'done';
-    save(r);
+    // 幂等检查（只读，不进锁）
+    const existing = load();
+    if (existing.projects[k]?.initialized) { console.log(`已初始化，跳过（${k} 于 ${existing.projects[k].initAt}）`); process.exit(0); }
+    const p = update((r) => {
+      const p2 = getProject(r, k);
+      if (p2.initialized) return p2;
+      p2.name = name; p2.path = pth;
+      p2.initialized = true;
+      p2.initAt = new Date().toISOString();
+      if (summary) p2.initSummary = summary;
+      p2.steps.init = 'done';
+      return p2;
+    });
     console.log(`已标记初始化: ${k} @ ${p.initAt}`);
     break;
   }
@@ -158,11 +188,12 @@ switch (cmd) {
   case 'add-run': {
     const [k, variant, summary, reportFile] = args;
     if (!k || !variant) { console.error('用法: registry.js add-run <projectKey> <variant> <summary> [reportFile]'); process.exit(2); }
-    const r = load();
-    const p = getProject(r, k);
-    p.atcRuns.push({ at: new Date().toISOString(), variant, summary: summary || '', reportFile: reportFile || '' });
-    p.steps.atc = 'done';
-    save(r);
+    const p = update((r) => {
+      const p2 = getProject(r, k);
+      p2.atcRuns.push({ at: new Date().toISOString(), variant, summary: summary || '', reportFile: reportFile || '' });
+      p2.steps.atc = 'done';
+      return p2;
+    });
     console.log(`已记录 ATC 执行: ${k} / ${variant} @ ${p.atcRuns[p.atcRuns.length - 1].at}`);
     break;
   }
@@ -214,11 +245,11 @@ switch (cmd) {
   case 'clear': {
     const k = args[0];
     if (!k) { console.error('用法: registry.js clear <projectKey>'); process.exit(2); }
-    const r = load();
-    if (!r.projects[k]) { console.log(`无记录: ${k}`); process.exit(0); }
+    // 存在性检查（只读）
+    const existing = load();
+    if (!existing.projects[k]) { console.log(`无记录: ${k}`); process.exit(0); }
     if (!args.includes('--force')) { console.error('安全保护：请加 --force 确认清除'); process.exit(3); }
-    delete r.projects[k];
-    save(r);
+    update((r) => { delete r.projects[k]; });
     console.log(`已清除: ${k}`);
     break;
   }

@@ -52,11 +52,26 @@
 - 每步完成后推进：`node scripts\run-state.js step "<项目目录>" <fetch|objects|select|archive|diff|deploy|rerun> done|fail [note]`
 - 中断后续跑：`run-state.js status` 显示当前步骤，从该步继续；`run-params.json` 记录全部输入与勾选。
 
+## 1.5 变体规则快照（可选，需用户确认启用）
+
+**非必做步骤**：执行开始时（步骤 0.1 确认输入后）**向用户确认是否启用**"变体规则快照"。
+
+- **用户选择启用** → 检查本地是否已有该变体快照，没有则先拉取：
+  ```
+  node scripts\fetch-variant-rules.js "<项目目录>" <变体> --env=<envPath>
+  ```
+  - exit 0 = 本地已有快照（`<项目目录>\atc-variant\<变体>\variant-rules.json`），跳过拉取；
+  - exit 1 = 本次已拉取（从该变体最新 worklist 派生生效检查集 + 实证命名规则，写入快照 + 可读 `variant-rules.md`）。
+  - 启用后：步骤 6 的 `gen-patch.js` 加 `--rules="<项目目录>\atc-variant\<变体>\variant-rules.json"`（命名规则以快照为准）。
+- **用户选择不启用** → 跳过本步；步骤 6 的 `gen-patch.js` **不传 `--rules=`**，使用内置默认命名规则（SAP 默认变体实证值 FORM→FRM_、USING→U([VTOS])?_）。
+- **快照能解决**：命名规则数据化（换变体/系统改快照不改代码）、规则来源可追溯、离线可查、多系统规则对比。
+- **已知限制**：系统侧 `SATC_AC_*` 配置表在本环境不可直接读取；`checks` 仅含"曾触发告警的检查"（非变体完整清单）；命名规则为实证值，对自定义变体可能不准。
+
 ## 2. 获取当前 ATC 结果 + 生成汇总版 HTML 报告（场景区分）
 
 **默认：重跑取最新**（结果可能滞后于最近部署，重跑保证反映系统当前状态）：
 ```
-node scripts\atc-run-csrf3.js /sap/bc/adt/programs/programs/<对象>/source/main <变体> 10 --env=<envPath>
+node scripts\atc-run-csrf3.js /sap/bc/adt/programs/programs/<对象>/source/main <变体> 10 --env=<envPath> --outDir="<项目目录>"
 node scripts\atc-xml-to-html.js "<项目目录>\atc-worklist-<新id>.xml" "<项目目录>\ATC-汇总报告.html" "ATC 汇总报告 <日期>"
 ```
 
@@ -102,14 +117,18 @@ node scripts\archive-all.js "<项目目录>" [时间戳]
 - 结果：每个对象根目录只保留本次执行产物；历史结果按时间归档。
 - 若对象文件夹不存在（首次执行），直接跳过。
 
-## 6. 修改前：按勾选项目生成 diff（本地）
+## 6. 修改前：生成候选补丁（脚本）→ AI 审查 → 生成 diff
 
-对每个勾选对象、每个检查项：
+对每个勾选对象：
 
 1. 把步骤 3 拉到的当前活动源码复制为 `<对象名>-before.abap`（修改前快照）。
-2. 按步骤 4 生成的 `fix-guide.md`（检查→修复要点→行号）规划修改；必要时对照对应 SKILL.md。
-3. 生成**计划修改后**的源码草稿 `<对象名>-planned.abap`。
-4. 生成 diff：
+2. **自动生成候选补丁**（常见修复模式：FORM/参数命名、SELECT SINGLE→UP TO 1 ROWS；硬编码/文本元素提示用专用脚本）：
+   ```
+   node scripts\gen-patch.js "<对象名>.abap" "<项目目录>\atc-worklist-<id>.xml" "<对象名>-patched.abap" --select=<勾选检查...> --changes="<对象名>-patch-changes.md"
+   ```
+   - 若步骤 1.5 已启用且本地存在快照，追加 `--rules="<项目目录>\atc-variant\<变体>\variant-rules.json"`（命名规则以快照为准）；否则不传，用内置默认。
+3. **AI 审查变更清单**（`<对象名>-patch-changes.md`）：逐条核对 Before/After 无语义误伤（组件访问、同行语句、EHP4 类型兼容）；按需调整后得到 `<对象名>-planned.abap`。
+4. 生成 diff（planned vs before）：
    ```
    node scripts\make-diff.js "<对象名>-before.abap" "<对象名>-planned.abap" "<对象名>.diff"
    ```
@@ -145,7 +164,7 @@ node scripts\archive-all.js "<项目目录>" [时间戳]
 
 - 用步骤 1 确认的变体重跑（默认 `atc-run-csrf3.js` 重新运行取最新；审计历史才用 `fetch-atc-latest.js`）：
   ```
-  node scripts\atc-run-csrf3.js /sap/bc/adt/programs/programs/<对象>/source/main <变体> 10 --env=<envPath>
+  node scripts\atc-run-csrf3.js /sap/bc/adt/programs/programs/<对象>/source/main <变体> 10 --env=<envPath> --outDir="<项目目录>"
   ```
 - 生成修正后 HTML：
   ```

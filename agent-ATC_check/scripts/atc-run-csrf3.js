@@ -144,7 +144,11 @@ async function getCsrf() {
     );
     const empty = /worklistId>00000000000000000000000000000000</.test(wl.body);
     if (!empty && wl.status === 200) {
-      const outFile = path.join(__dirname, `atc-worklist-${runId}.xml`);
+      // 输出目录: --outDir=<dir> 优先（流程中指向 <项目目录>），否则脚本目录
+      const outDirFlag = process.argv.find((a) => a.startsWith('--outDir='));
+      const outDir = outDirFlag ? path.resolve(outDirFlag.slice('--outDir='.length)) : __dirname;
+      fs.mkdirSync(outDir, { recursive: true });
+      const outFile = path.join(outDir, `atc-worklist-${runId}.xml`);
       fs.writeFileSync(outFile, wl.body, 'utf8');
       console.log('worklist saved:', outFile, `(${wl.body.length} bytes)`);
       console.log(wl.body.slice(0, 2500));

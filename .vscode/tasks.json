@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json.schemastore.org/tasks.json",
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "调度: 前置自检 (scheduler-check)",
+      "type": "shell",
+      "command": "node scripts/scheduler-check.js ${input:envPath}",
+      "options": { "cwd": "${workspaceFolder}/agent-scheduler" },
+      "problemMatcher": []
+    },
+    {
+      "label": "调度: 注册表状态 (registry status)",
+      "type": "shell",
+      "command": "node scripts/registry.js status ${input:projectKey}",
+      "options": { "cwd": "${workspaceFolder}/agent-scheduler" },
+      "problemMatcher": []
+    },
+    {
+      "label": "调度: 注册表清单 (registry list)",
+      "type": "shell",
+      "command": "node scripts/registry.js list",
+      "options": { "cwd": "${workspaceFolder}/agent-scheduler" },
+      "problemMatcher": []
+    },
+    {
+      "label": "ATC: 重跑检查 (atc-run-csrf3)",
+      "type": "shell",
+      "command": "node atc-run-csrf3.js /sap/bc/adt/programs/programs/zzzprog001/source/main ${input:variant} 10 ${input:envPath} --outDir=${input:projectDir}",
+      "options": { "cwd": "${workspaceFolder}/agent-ATC_check/scripts" },
+      "problemMatcher": []
+    },
+    {
+      "label": "ATC: 拉取历史最新 (fetch-atc-latest)",
+      "type": "shell",
+      "command": "node fetch-atc-latest.js ${input:envPath} ${input:creator} ${input:variant} ${input:projectDir}",
+      "options": { "cwd": "${workspaceFolder}/agent-ATC_check/scripts" },
+      "problemMatcher": []
+    },
+    {
+      "label": "ATC: 生成 HTML 报告 (atc-xml-to-html)",
+      "type": "shell",
+      "command": "node atc-xml-to-html.js ${input:xmlFile} ${input:htmlFile} ${input:reportTitle}",
+      "options": { "cwd": "${workspaceFolder}/agent-ATC_check/scripts" },
+      "problemMatcher": []
+    },
+    {
+      "label": "ATC: 部署后校验 (verify-deployed)",
+      "type": "shell",
+      "command": "node verify-deployed.js ${input:workDir} --env=${input:envPath}",
+      "options": { "cwd": "${workspaceFolder}/agent-ATC_check/scripts" },
+      "problemMatcher": []
+    },
+    {
+      "label": "ATC: 回归断言 (assert-regression)",
+      "type": "shell",
+      "command": "node assert-regression.js ${input:beforeXml} ${input:afterXml} --select=${input:selectChecks}",
+      "options": { "cwd": "${workspaceFolder}/agent-ATC_check/scripts" },
+      "problemMatcher": []
+    },
+    {
+      "label": "ATC: 生成候选补丁 (gen-patch)",
+      "type": "shell",
+      "command": "node gen-patch.js ${input:sourceFile} ${input:xmlFile} ${input:patchedFile} --select=${input:selectChecks} --changes=${input:changesFile}",
+      "options": { "cwd": "${workspaceFolder}/agent-ATC_check/scripts" },
+      "problemMatcher": []
+    },
+    {
+      "label": "ATC: 变体规则快照 (fetch-variant-rules)",
+      "type": "shell",
+      "command": "node fetch-variant-rules.js ${input:projectDir} ${input:variant} ${input:envPath}",
+      "options": { "cwd": "${workspaceFolder}/agent-ATC_check/scripts" },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    { "id": "envPath", "type": "promptString", "description": "连接配置 .env 路径", "default": "C:/path/to/your-abap-mcp/mcp-pack/.env" },
+    { "id": "variant", "type": "promptString", "description": "ATC 检查变体 ID", "default": "ZABAP_CLOUD_DEV_CHECK" },
+    { "id": "creator", "type": "promptString", "description": "创建人账号（拉历史结果用）", "default": "123456" },
+    { "id": "projectKey", "type": "promptString", "description": "调度项目唯一标识", "default": "XXX-ZZZ-ZZZPROG001" },
+    { "id": "projectDir", "type": "promptString", "description": "本次执行产物根目录", "default": "C:/path/to/XXX升级项目/ATC-work" },
+    { "id": "workDir", "type": "promptString", "description": "验证/断言用的项目目录", "default": "C:/path/to/XXX升级项目/ATC-work" },
+    { "id": "xmlFile", "type": "promptString", "description": "worklist XML 路径", "default": "C:/path/to/XXX升级项目/ATC-work/atc-worklist-<id>.xml" },
+    { "id": "htmlFile", "type": "promptString", "description": "输出 HTML 报告路径", "default": "C:/path/to/XXX升级项目/ATC-work/ATC-汇总报告.html" },
+    { "id": "reportTitle", "type": "promptString", "description": "报告标题", "default": "ATC 报告" },
+    { "id": "beforeXml", "type": "promptString", "description": "修正前 worklist XML", "default": "C:/path/to/XXX升级项目/ATC-work/atc-worklist-before.xml" },
+    { "id": "afterXml", "type": "promptString", "description": "修正后 worklist XML", "default": "C:/path/to/XXX升级项目/ATC-work/atc-worklist-after.xml" },
+    { "id": "selectChecks", "type": "promptString", "description": "勾选检查名（逗号分隔）", "default": "程序的扩展命名规则" },
+    { "id": "sourceFile", "type": "promptString", "description": "待修补源码文件", "default": "C:/path/to/XXX升级项目/ATC-work/ZZZPROG001/ZZZPROG001.abap" },
+    { "id": "patchedFile", "type": "promptString", "description": "候选补丁输出", "default": "C:/path/to/XXX升级项目/ATC-work/ZZZPROG001/ZZZPROG001-patched.abap" },
+    { "id": "changesFile", "type": "promptString", "description": "变更清单输出", "default": "C:/path/to/XXX升级项目/ATC-work/ZZZPROG001/ZZZPROG001-patch-changes.md" }
+  ]
+}
